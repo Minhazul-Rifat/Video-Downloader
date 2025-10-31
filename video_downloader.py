@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from yt_dlp import YoutubeDL
 import threading
+import os
 
 app = Flask(__name__)
 
@@ -17,8 +18,7 @@ download_thread = None
 
 
 def download(url):
-    FFMPEG_PATH = os.environ.get(
-        "FFMPEG_LOCATION", os.path.join(os.getcwd(), 'ffmpeg'))
+    FFMPEG_PATH_RAILWAY = os.path.join(os.getcwd(), 'ffmpeg')
     global progress, cancel_download
     progress = {"percent": 0, "speed": "0 KiB/s",
                 "eta": 0, "status": "Starting", "error": None}
@@ -55,7 +55,7 @@ def download(url):
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
         # "format": "bestvideo+bestaudio/best",
         # "ffmpeg_location": r"C:\Users\WHITE DEVIL\Desktop\pybot\YouTube Downloader\ffmpeg.exe",
-        "ffmpeg_location": FFMPEG_PATH,
+        "ffmpeg_location": FFMPEG_PATH_RAILWAY,
     }
 
     try:
