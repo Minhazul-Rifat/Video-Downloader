@@ -1,2 +1,2 @@
 chmod +x ./ffmpeg
-gunicorn video_downloader:app
+gunicorn --timeout 120 video_downloader:app
