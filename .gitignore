@@ -1,0 +1,6 @@
+/downloads/
+__pycache__/
+/ffmpeg_full/
+.env
+*.pyc
+Complete run.mp4

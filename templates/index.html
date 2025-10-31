@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Video Downloader</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url("static/background.jpg");
+            /* ✅ Use correct path */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: #fff;
+            /* optional: makes text visible on dark bg */
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        .container {
+            width: 450px;
+            margin: auto;
+            padding: 20px;
+            border-radius: 12px;
+            background-color: #fff;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            font-size: 28px;
+            color: #1f2937;
+            margin-bottom: 25px;
+        }
+
+        #progress-container {
+            margin-top: 25px;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 25px;
+            background-color: #d1d5db;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #10b981;
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+            border-radius: 12px 0 0 12px;
+        }
+
+        #progress-text {
+            font-weight: bold;
+            font-size: 18px;
+            color: #374151;
+        }
+
+        #speed-eta {
+            font-size: 16px;
+            color: #4b5563;
+            margin-top: 3px;
+            letter-spacing: 2px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Video Downloader WEB</h2>
+        <input type="text" id="url" placeholder="Paste YouTube URL here" />
+        <div class="buttons">
+            <button id="download-btn" onclick="startDownload()">Download</button>
+            <button id="cancel-btn" onclick="cancelDownload()" disabled>Cancel</button>
+        </div>
+        <div id="progress-container" style="display:none;">
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <p id="progress-text"></p>
+            <p id="speed-eta"></p>
+        </div>
+    </div>
+
+    <script>
+        let progressInterval;
+
+        function startDownload() {
+            const url = document.getElementById("url").value.trim();
+            if (!url) {
+                alert("Please enter a YouTube URL");
+                return;
+            }
+
+            document.getElementById("download-btn").disabled = true;
+            document.getElementById("cancel-btn").disabled = false;
+            document.getElementById("progress-container").style.display = "block";
+
+            updateProgressBar(0);
+            updateStatusText("Starting...");
+
+            fetch("/download", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ url }),
+            })
+                .then((res) => {
+                    if (!res.ok) throw new Error("Failed to start download");
+                    progressInterval = setInterval(fetchProgress, 1000);
+                })
+                .catch((e) => {
+                    updateStatusText("Error: " + e.message);
+                    resetButtons();
+                });
+        }
+
+        function cancelDownload() {
+            fetch("/cancel", { method: "POST" }).then(() => {
+                updateStatusText("Cancelled");
+                clearInterval(progressInterval);
+                resetButtons();
+            });
+        }
+
+        function fetchProgress() {
+            fetch("/progress")
+                .then((res) => res.json())
+                .then((data) => {
+                    updateProgressBar(data.percent || 0);
+
+                    if (data.status === "Downloading") {
+                        updateStatusText("Downloading...");
+                    } else if (data.status === "Finished") {
+                        updateStatusText("Download Complete");
+                        clearInterval(progressInterval);
+                        resetButtons(true);
+                        clearFieldsAfterDelay();
+                    } else if (data.status === "Starting") {
+                        updateStatusText("Starting...");
+                    } else if (data.status === "Cancelled") {
+                        updateStatusText("Cancelled");
+                        clearInterval(progressInterval);
+                        resetButtons();
+                    } else if (data.status === "Error") {
+                        updateStatusText("Error: " + (data.error || ""));
+                        clearInterval(progressInterval);
+                        resetButtons();
+                    } else {
+                        updateStatusText(data.status || "");
+                    }
+
+                    document.getElementById("speed-eta").innerText = `${data.speed || ""}    ETA: ${data.eta || ""}s`;
+                });
+        }
+
+        function updateProgressBar(percent) {
+            const fill = document.querySelector(".progress-bar-fill");
+            fill.style.width = percent + "%";
+
+        }
+
+        function updateStatusText(text) {
+            document.getElementById("progress-text").innerText = text;
+        }
+
+        function resetButtons(downloadComplete = false) {
+            document.getElementById("download-btn").disabled = downloadComplete ? false : false;
+            document.getElementById("cancel-btn").disabled = true;
+            if (!downloadComplete) {
+                updateProgressBar(0);
+                updateStatusText("");
+                document.getElementById("speed-eta").innerText = "";
+                document.getElementById("progress-container").style.display = "none";
+            }
+        }
+
+        function clearFieldsAfterDelay() {
+            setTimeout(() => {
+                document.getElementById("url").value = "";
+                resetButtons(true);
+                document.getElementById("progress-container").style.display = "none";
+            }, 4000);
+        }
+    </script>
+</body>
+
+</html>
